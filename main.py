@@ -2,10 +2,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 
-# Permite que tu web (Webflow/Portal) se conecte sin bloqueos
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,10 +14,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------
-# AIzaSyCpma-6vjU-gaNKiyJ6rXdF0PKLwCiD-o0
-# ---------------------------------------------------------
-genai.configure(api_key="TU_API_KEY_AQUI")
+# AQUÍ ESTÁ LA MAGIA: Ahora lee la llave secreta desde Render
+api_key_render = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=api_key_render)
 
 class UserRequest(BaseModel):
     idea: str
@@ -41,9 +40,10 @@ model = genai.GenerativeModel(
 async def generar_guion(request: UserRequest):
     try:
         response = model.generate_content(f"Crea un guion viral con esta idea: {request.idea}")
-        return {"guion": response.text}
+        return {"resultado": response.text}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Si Gemini falla, mandará el error exacto a Webflow para que sepamos qué pasa
+        return {"resultado": f"Error interno de IA: {str(e)}"}
 
 @app.get("/")
 def home():
